@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use iced::executor;
 use iced::widget::{button, container, radio, text, text_input, Column, Row};
 use iced::{Application, Command, Element, Length, Settings, Subscription, Theme};

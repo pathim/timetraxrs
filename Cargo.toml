@@ -7,5 +7,10 @@ edition = "2021"
 
 [dependencies]
 iced = {version="0.7.0", features=["tokio"]}
-rusqlite = {version="0.28",features=["chrono"]}
+rusqlite = {version="0.28",features=["chrono", "bundled"]}
 chrono = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
