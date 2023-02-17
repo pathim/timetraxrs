@@ -1,4 +1,5 @@
 #![windows_subsystem = "windows"]
+use chrono::Duration;
 use iced::executor;
 use iced::widget::{button, container, radio, text, text_input, Column, Row};
 use iced::{Application, Command, Element, Length, Settings, Subscription, Theme};
@@ -25,8 +26,9 @@ struct Timetrax {
     db: Database,
     current_work: Option<u64>,
     available_work: Vec<(String, u64)>,
-    work_times: std::collections::HashMap<u64, chrono::Duration>,
+    work_times: std::collections::HashMap<u64, Duration>,
     new_work_item: String,
+    net_time: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -37,11 +39,16 @@ enum Message {
     AddNewWork,
 }
 
-fn format_duration(duration: &chrono::Duration) -> String {
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes() - 60 * hours;
-    let seconds = duration.num_seconds() - 60 * (minutes + 60 * hours);
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+fn format_duration(duration: &Duration) -> String {
+    let sign = if *duration < Duration::zero() {
+        "-"
+    } else {
+        ""
+    };
+    let hours = duration.num_hours().abs();
+    let minutes = duration.num_minutes().abs() - 60 * hours;
+    let seconds = duration.num_seconds().abs() - 60 * (minutes + 60 * hours);
+    format!("{}{:02}:{:02}:{:02}", sign, hours, minutes, seconds)
 }
 
 impl Application for Timetrax {
@@ -51,7 +58,8 @@ impl Application for Timetrax {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let db = Database::open().unwrap();
+        let db = Database::open("work.db").unwrap();
+        let net_time = db.get_time_diff().unwrap() - db.get_expected_today().unwrap();
         let available_work = db.get_available_work().unwrap();
         let current_work = db.get_current_work().unwrap();
         (
@@ -62,6 +70,7 @@ impl Application for Timetrax {
                 available_work,
                 work_times: Default::default(),
                 new_work_item: Default::default(),
+                net_time,
             },
             Command::none(),
         )
@@ -86,9 +95,7 @@ impl Application for Timetrax {
                             let end = &work[1];
                             if let Some(work_item) = start.0 {
                                 let duration = end.1 - start.1;
-                                let worked = times
-                                    .entry(work_item)
-                                    .or_insert_with(chrono::Duration::zero);
+                                let worked = times.entry(work_item).or_insert_with(Duration::zero);
                                 *worked = *worked + duration;
                             }
                         }
@@ -131,7 +138,7 @@ impl Application for Timetrax {
         let pause_button = radio("Pause", None, Some(self.current_work), Message::ChangeWork)
             .width(Length::Units(150));
         col = col.push(pause_button);
-        let mut total_time = chrono::Duration::zero();
+        let mut total_time = Duration::zero();
         for (name, id) in &self.available_work {
             let mut row = Row::new();
             let button = radio(
@@ -160,8 +167,13 @@ impl Application for Timetrax {
 
         col = col.push(
             Row::new()
-                .push(text("Total time").width(col1_width))
+                .push(text("Total time today").width(col1_width))
                 .push(text(format_duration(&total_time))),
+        );
+        col = col.push(
+            Row::new()
+                .push(text("Total net time").width(col1_width))
+                .push(text(format_duration(&(self.net_time + total_time)))),
         );
         container(col)
             .width(Length::Fill)
