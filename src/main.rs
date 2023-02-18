@@ -58,7 +58,7 @@ impl Application for Timetrax {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let db = Database::open("work.db").unwrap();
+        let db = Database::open("work.db", chrono::Utc::now).unwrap();
         let net_time = db.get_time_diff().unwrap() - db.get_expected_today().unwrap();
         let available_work = db.get_available_work().unwrap();
         let current_work = db.get_current_work().unwrap();
