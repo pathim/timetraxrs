@@ -175,7 +175,7 @@ impl<TP: TimeProvider> Drop for Database<'_, TP> {
 #[cfg(test)]
 mod tests {
     use super::{Database, TimeProvider};
-    use chrono::{Duration, TimeZone};
+    use chrono::{DateTime, Duration, Local, TimeZone};
     use std::collections::HashSet;
 
     struct MockTime {
@@ -225,29 +225,64 @@ mod tests {
     }
 
     #[test]
-    fn get_set_current_work(){
-        let t=MockTime::new();
-        let db=Database::open(":memory:", &t).unwrap();
-        assert_eq!(db.get_current_work(),Ok(None));
-        let work_item=db.get_available_work().unwrap().first().unwrap().1;
+    fn get_set_current_work() {
+        let t = MockTime::new();
+        let db = Database::open(":memory:", &t).unwrap();
+        assert_eq!(db.get_current_work(), Ok(None));
+        let work_item = db.get_available_work().unwrap().first().unwrap().1;
         db.set_current_work(Some(work_item)).unwrap();
         t.advance(1);
-        assert_eq!(db.get_current_work().unwrap(),Some(work_item));
+        assert_eq!(db.get_current_work().unwrap(), Some(work_item));
     }
 
     #[test]
-    fn time_diff(){
-        let t=MockTime::new();
-        let db=Database::open(":memory:", &t).unwrap();
+    fn time_diff() {
+        let t = MockTime::new();
+        let db = Database::open(":memory:", &t).unwrap();
         t.advance(-24);
-        let work_item=db.get_available_work().unwrap().first().unwrap().1;
+        let work_item = db.get_available_work().unwrap().first().unwrap().1;
         db.set_current_work(Some(work_item)).unwrap();
         t.advance(5);
         db.set_current_work(None).unwrap();
         t.advance(19);
         db.fix_missing_expected().unwrap();
-        let diff=db.get_time_diff().unwrap();
-        let expected=db.get_expected_today().unwrap();
-        assert_eq!(diff,Duration::hours(5)-expected);
+        let diff = db.get_time_diff().unwrap();
+        let expected = db.get_expected_today().unwrap();
+        assert_eq!(diff, Duration::hours(5) - expected);
+        db.conn
+            .execute(
+                "INSERT INTO key_value(key, value) VALUES ('account_start', 3*60*60);",
+                (),
+            )
+            .unwrap();
+        let diff = db.get_time_diff().unwrap();
+        assert_eq!(diff, Duration::hours(5 + 3) - expected);
+    }
+
+    #[test]
+    fn shutdown() {
+        let t = MockTime::new();
+        let db = Database::open(":memory:", &t).unwrap();
+        let work_item = Some(db.get_available_work().unwrap().first().unwrap().1);
+        db.set_current_work(work_item).unwrap();
+        let start_time: DateTime<Local> = DateTime::from(t.now());
+        t.advance(1);
+        let end_time: DateTime<Local> = DateTime::from(t.now());
+        db.shutdown().unwrap();
+        db.add_work_end_at_shutdown().unwrap(); // Same day. Should do nothing
+        let today = db.get_work_today().unwrap();
+        assert_eq!(today, vec![(work_item, start_time)]);
+        t.advance(24);
+        db.add_work_end_at_shutdown().unwrap(); // Next day. Should add None
+        t.advance(-24);
+        let today = db.get_work_today().unwrap();
+        assert_eq!(today, vec![(work_item, start_time), (None, end_time)]);
+        t.advance(3);
+        db.shutdown().unwrap();
+        t.advance(24);
+        db.add_work_end_at_shutdown().unwrap(); // Already None at day end. Should do nothing
+        t.advance(-24);
+        let today = db.get_work_today().unwrap();
+        assert_eq!(today, vec![(work_item, start_time), (None, end_time)]);
     }
 }
