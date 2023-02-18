@@ -23,7 +23,7 @@ pub fn main() -> iced::Result {
 
 struct Timetrax {
     now: chrono::DateTime<chrono::Local>,
-    db: Database,
+    db: Database<'static, chrono::Utc>,
     current_work: Option<u64>,
     available_work: Vec<(String, u64)>,
     work_times: std::collections::HashMap<u64, Duration>,
@@ -58,7 +58,7 @@ impl Application for Timetrax {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let db = Database::open("work.db", chrono::Utc::now).unwrap();
+        let db = Database::open("work.db", &chrono::Utc).unwrap();
         let net_time = db.get_time_diff().unwrap() - db.get_expected_today().unwrap();
         let available_work = db.get_available_work().unwrap();
         let current_work = db.get_current_work().unwrap();
