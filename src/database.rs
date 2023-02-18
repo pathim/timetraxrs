@@ -223,4 +223,31 @@ mod tests {
             "Added item not found"
         );
     }
+
+    #[test]
+    fn get_set_current_work(){
+        let t=MockTime::new();
+        let db=Database::open(":memory:", &t).unwrap();
+        assert_eq!(db.get_current_work(),Ok(None));
+        let work_item=db.get_available_work().unwrap().first().unwrap().1;
+        db.set_current_work(Some(work_item)).unwrap();
+        t.advance(1);
+        assert_eq!(db.get_current_work().unwrap(),Some(work_item));
+    }
+
+    #[test]
+    fn time_diff(){
+        let t=MockTime::new();
+        let db=Database::open(":memory:", &t).unwrap();
+        t.advance(-24);
+        let work_item=db.get_available_work().unwrap().first().unwrap().1;
+        db.set_current_work(Some(work_item)).unwrap();
+        t.advance(5);
+        db.set_current_work(None).unwrap();
+        t.advance(19);
+        db.fix_missing_expected().unwrap();
+        let diff=db.get_time_diff().unwrap();
+        let expected=db.get_expected_today().unwrap();
+        assert_eq!(diff,Duration::hours(5)-expected);
+    }
 }
