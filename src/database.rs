@@ -175,7 +175,7 @@ impl<TP: TimeProvider> Drop for Database<'_, TP> {
 #[cfg(test)]
 mod tests {
     use super::{Database, TimeProvider};
-    use chrono::{DateTime, Duration, Local, TimeZone};
+    use chrono::{Duration, Local, TimeZone};
     use std::collections::HashSet;
 
     struct MockTime {
@@ -265,9 +265,9 @@ mod tests {
         let db = Database::open(":memory:", &t).unwrap();
         let work_item = Some(db.get_available_work().unwrap().first().unwrap().1);
         db.set_current_work(work_item).unwrap();
-        let start_time: DateTime<Local> = DateTime::from(t.now());
+        let start_time = t.now().with_timezone(&Local);
         t.advance(1);
-        let end_time: DateTime<Local> = DateTime::from(t.now());
+        let end_time = t.now().with_timezone(&Local);
         db.shutdown().unwrap();
         db.add_work_end_at_shutdown().unwrap(); // Same day. Should do nothing
         let today = db.get_work_today().unwrap();
