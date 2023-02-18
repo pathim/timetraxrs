@@ -15,35 +15,9 @@ impl Database {
             rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_FKEY,
             true,
         )?;
-        s.conn.execute("CREATE TABLE IF NOT EXISTS work_items (id INTEGER PRIMARY KEY ASC, name TEXT NOT NULL UNIQUE, description TEXT, visible BOOLEAN NOT NULL);", ())?;
-        s.conn.execute("CREATE TABLE IF NOT EXISTS work_times (start TEXT NOT NULL UNIQUE, work_item INTEGER, FOREIGN KEY (work_item) REFERENCES work_items (id));", ())?;
-        s.conn.execute(
-            "CREATE TABLE IF NOT EXISTS key_value (key TEXT PRIMARY KEY, value TEXT);",
-            (),
-        )?;
-        s.conn.execute("CREATE TABLE IF NOT EXISTS expected_time (date STRING PRIMARY KEY ASC, seconds INTEGER);", ())?;
 
         s.create_default_entries()?;
-
-        // Check if time of last shutdown was yesterday or earlier. Then add shutdown time as end of workday if no end was inserted before
-        let last_shutdown: Option<String> = s
-            .conn
-            .query_row(
-                "SELECT value FROM key_value WHERE key='shutdown' AND date('now','localtime')>date(value,'localtime');",
-                (),
-                |row| row.get(0),
-            )
-            .optional()
-            .unwrap();
-        if let Some(shutdown_time) = last_shutdown {
-            let last_work:Option<u64>=s.conn.query_row("SELECT work_item FROM work_times WHERE date(start,'localtime')=date(?,'localtime') ORDER BY start DESC LIMIT 1", [&shutdown_time], |row| row.get(0)).optional().unwrap().flatten();
-            if last_work.is_some() {
-                s.conn.execute(
-                    "INSERT INTO work_times (start,work_item) VALUES (?,NULL)",
-                    [&shutdown_time],
-                )?;
-            }
-        }
+        s.add_work_end_at_shutdown()?;
         s.fix_missing_expected()?;
 
         Ok(s)
@@ -58,11 +32,32 @@ impl Database {
     }
 
     fn create_default_entries(&self) -> Result<()> {
+        self.conn.execute("CREATE TABLE IF NOT EXISTS work_items (id INTEGER PRIMARY KEY ASC, name TEXT NOT NULL UNIQUE, description TEXT, visible BOOLEAN NOT NULL);", ())?;
+        self.conn.execute("CREATE TABLE IF NOT EXISTS work_times (start TEXT NOT NULL UNIQUE, work_item INTEGER, FOREIGN KEY (work_item) REFERENCES work_items (id));", ())?;
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS key_value (key TEXT PRIMARY KEY, value TEXT);",
+            (),
+        )?;
+        self.conn.execute("CREATE TABLE IF NOT EXISTS expected_time (date STRING PRIMARY KEY ASC, seconds INTEGER);", ())?;
         self.conn.execute("INSERT OR IGNORE INTO work_items(name, description, visible) VALUES ('Standup',NULL,1);", ())?;
         self.conn.execute(
             "INSERT OR IGNORE INTO key_value(key, value) VALUES ('default_time', 7*60*60);",
             (),
         )?;
+        Ok(())
+    }
+    fn add_work_end_at_shutdown(&self) -> Result<()> {
+        // Check if time of last shutdown was yesterday or earlier. Then add shutdown time as end of workday if no end was inserted before
+        let last_shutdown: Option<String> = self.conn.query_row("SELECT value FROM key_value WHERE key='shutdown' AND date('now','localtime')>date(value,'localtime');",(),|row| row.get(0),).optional().unwrap();
+        if let Some(shutdown_time) = last_shutdown {
+            let last_work:Option<u64>=self.conn.query_row("SELECT work_item FROM work_times WHERE date(start,'localtime')=date(?,'localtime') ORDER BY start DESC LIMIT 1", [&shutdown_time], |row| row.get(0)).optional().unwrap().flatten();
+            if last_work.is_some() {
+                self.conn.execute(
+                    "INSERT INTO work_times (start,work_item) VALUES (?,NULL)",
+                    [&shutdown_time],
+                )?;
+            }
+        }
         Ok(())
     }
     fn fix_missing_expected(&self) -> Result<()> {
@@ -154,5 +149,31 @@ impl Database {
 impl Drop for Database {
     fn drop(&mut self) {
         self.shutdown().ok();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::Database;
+    #[test]
+    fn add_get_work_item() {
+        let db = Database::open(":memory:").unwrap();
+        let mut work = HashSet::new();
+        for d in db.get_available_work().unwrap() {
+            work.insert(d);
+        }
+        db.add_work_item("testwork").unwrap();
+        let mut work2 = HashSet::new();
+        for d in db.get_available_work().unwrap() {
+            work2.insert(d);
+        }
+        assert_eq!(work.len() + 1, work2.len(), "Wrong number of items added");
+        assert!(work2.is_superset(&work), "Items missing after add");
+        assert!(
+            work2.iter().find(|x| x.0 == "testwork").is_some(),
+            "Added item not found"
+        );
     }
 }
