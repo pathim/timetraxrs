@@ -172,15 +172,9 @@ mod tests {
     fn add_get_work_item() {
         let db =
             Database::open(":memory:", || chrono::Utc.timestamp_millis_opt(0).unwrap()).unwrap();
-        let mut work = HashSet::new();
-        for d in db.get_available_work().unwrap() {
-            work.insert(d);
-        }
+        let work: HashSet<_> = db.get_available_work().unwrap().into_iter().collect();
         db.add_work_item("testwork").unwrap();
-        let mut work2 = HashSet::new();
-        for d in db.get_available_work().unwrap() {
-            work2.insert(d);
-        }
+        let work2: HashSet<_> = db.get_available_work().unwrap().into_iter().collect();
         assert_eq!(work.len() + 1, work2.len(), "Wrong number of items added");
         assert!(work2.is_superset(&work), "Items missing after add");
         assert!(
