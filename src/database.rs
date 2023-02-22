@@ -238,15 +238,20 @@ mod tests {
         let t = MockTime::new();
         let db = Database::open(":memory:", &t).unwrap();
         t.advance(-24);
-        let work_item = db.get_available_work().unwrap().first().unwrap().1;
-        db.set_current_work(Some(work_item)).unwrap();
-        t.advance(5);
+        let work_item = Some(db.get_available_work().unwrap().first().unwrap().1);
+        db.set_current_work(work_item).unwrap();
+        t.advance(5); // five hours of work
         db.set_current_work(None).unwrap();
-        t.advance(19);
+        t.advance(1); // One hour break
+        db.set_current_work(work_item).unwrap();
+        t.advance(1); // another hour of work
+        db.set_current_work(None).unwrap();
+        t.advance(19); // next day
         db.fix_missing_expected().unwrap();
+        let total_work = 6;
         let diff = db.get_time_diff().unwrap();
         let expected = db.get_expected_today().unwrap();
-        assert_eq!(diff, Duration::hours(5) - expected);
+        assert_eq!(diff, Duration::hours(total_work) - expected);
         db.conn
             .execute(
                 "INSERT INTO key_value(key, value) VALUES ('account_start', 3*60*60);",
@@ -254,7 +259,7 @@ mod tests {
             )
             .unwrap();
         let diff = db.get_time_diff().unwrap();
-        assert_eq!(diff, Duration::hours(5 + 3) - expected);
+        assert_eq!(diff, Duration::hours(total_work + 3) - expected);
     }
 
     #[test]
