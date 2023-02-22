@@ -149,9 +149,7 @@ impl<'a, TP: TimeProvider> Database<'a, TP> {
             if let Some(ctime) = current_time {
                 total_time = total_time + (start - ctime);
             }
-            if item.is_some() {
-                current_time = Some(start);
-            }
+            current_time = item.map(|_| start);
         }
         Ok(total_time - expected)
     }
