@@ -9,6 +9,7 @@ edition = "2021"
 iced = {version="0.7.0", features=["tokio"]}
 rusqlite = {version="0.28",features=["chrono", "bundled"]}
 chrono = "0.4"
+holiday_de = "0.1.0"
 
 [profile.release]
 opt-level = "s"

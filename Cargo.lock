@@ -283,6 +283,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "computus"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9eaa21df489b1e50af464db43c1fc69f60492060ac7baae3996fe8a5f476790"
+
+[[package]]
 name = "const_panic"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -972,6 +978,16 @@ name = "hexf-parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
+
+[[package]]
+name = "holiday_de"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4934674c5818f7823317d03ccf47b4a132944f3bd6c793d7c8df6a3b3f7293e"
+dependencies = [
+ "chrono",
+ "computus",
+]
 
 [[package]]
 name = "iana-time-zone"
@@ -2105,6 +2121,7 @@ name = "timetrax"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "holiday_de",
  "iced",
  "rusqlite",
 ]

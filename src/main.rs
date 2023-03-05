@@ -3,7 +3,9 @@ use chrono::Duration;
 use iced::executor;
 use iced::widget::{button, container, radio, text, text_input, Column, Row};
 use iced::{Application, Command, Element, Length, Settings, Subscription, Theme};
+use rusqlite::OptionalExtension;
 
+mod business_logic;
 mod database;
 
 use database::Database;
@@ -58,13 +60,22 @@ impl Application for Timetrax {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
+        let now = chrono::Local::now();
         let db = Database::open("work.db", &chrono::Utc).unwrap();
-        let net_time = db.get_time_diff().unwrap() - db.get_expected_today().unwrap();
+        //business_logic::fix_missing_expected(&db).unwrap();
+        let account_start = db
+            .get_kv::<i64>("account_start")
+            .optional()
+            .unwrap()
+            .map(Duration::seconds)
+            .unwrap_or_else(Duration::zero);
+        let net_time = account_start + business_logic::time_diff(&db).unwrap()
+            - business_logic::get_expected_work_or_insert_default(&db, now.date_naive()).unwrap();
         let available_work = db.get_available_work().unwrap();
         let current_work = db.get_current_work().unwrap();
         (
             Timetrax {
-                now: chrono::Local::now(),
+                now,
                 db,
                 current_work,
                 available_work,
@@ -87,7 +98,7 @@ impl Application for Timetrax {
 
                 if now != self.now {
                     self.now = now;
-                    if let Ok(mut work_time) = self.db.get_work_today() {
+                    if let Ok(mut work_time) = self.db.get_work_on_date(&now.date_naive()) {
                         work_time.push((None, now));
                         let mut times = std::collections::HashMap::new();
                         for work in work_time.windows(2) {
