@@ -55,15 +55,50 @@
             sqlite
             freetype
             zlib
+            gtk4
+            libffi
+            fribidi
+            fontconfig.lib
             libpng
+            libjpeg
+            libtiff
             expat
+            libepoxy
+            pango
             bzip2
+            libdeflate
+            lzma
             brotli.lib
+            graphite2
+            utillinux
+            libxkbcommon
+            libthai
+            tracker
+            wayland
+            cairo
+            pixman
+            libdatrie
+            libxml2
+            libselinux
+            pcre2
+            pcre
+            icu
+            glib
+            libGL
+            json-glib
+            stdenv.cc.cc.lib
             xorg.libX11
             xorg.libXcursor
             xorg.libXrandr
             xorg.libXi
-            vulkan-loader
+            xorg.libXrender
+            xorg.libXinerama
+            xorg.libXext
+            xorg.libXdamage
+            xorg.libXfixes
+            xorg.libXau
+            xorg.libXdmcp
+            xorg.libxcb
           ];
 
           shellHook = ''
