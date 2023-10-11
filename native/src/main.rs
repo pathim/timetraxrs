@@ -169,7 +169,7 @@ impl Application for Timetrax {
             Row::new()
                 .push(
                     text_input("new work item", &self.new_work_item)
-                    .on_input(Message::TypeNewItem)
+                        .on_input(Message::TypeNewItem)
                         .width(col1_width)
                         .on_submit(Message::AddNewWork),
                 )
