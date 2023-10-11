@@ -5,8 +5,7 @@ use iced::widget::{button, container, radio, text, text_input, Column, Row};
 use iced::{Application, Command, Element, Length, Settings, Subscription, Theme};
 use rusqlite::OptionalExtension;
 
-mod business_logic;
-mod database;
+use timetrax::{business_logic, database};
 
 use database::Database;
 

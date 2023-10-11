@@ -1,0 +1,15 @@
+[package]
+name = "timetrax-native"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4"
+iced = {version="0.9.0", features=["tokio"]}
+rusqlite = {version="0.29",features=["chrono", "bundled"]}
+timetrax = {path = ".."}
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
