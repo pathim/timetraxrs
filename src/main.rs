@@ -144,10 +144,10 @@ impl Application for Timetrax {
     }
 
     fn view(&self) -> Element<Message> {
-        let col1_width = Length::Units(150);
+        let col1_width = Length::Fixed(150.0);
         let mut col = Column::new();
         let pause_button = radio("Pause", None, Some(self.current_work), Message::ChangeWork)
-            .width(Length::Units(150));
+            .width(Length::Fixed(150.0));
         col = col.push(pause_button);
         let mut total_time = Duration::zero();
         for (name, id) in &self.available_work {
@@ -169,7 +169,8 @@ impl Application for Timetrax {
         col = col.push(
             Row::new()
                 .push(
-                    text_input("new work item", &self.new_work_item, Message::TypeNewItem)
+                    text_input("new work item", &self.new_work_item)
+                    .on_input(Message::TypeNewItem)
                         .width(col1_width)
                         .on_submit(Message::AddNewWork),
                 )
